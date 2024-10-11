@@ -25,13 +25,14 @@
 
 /* Includes ---------------------------------------------------------------- */
 #include <Fall_Detection_tinyml_inferencing.h>
-#include <LIS3DHTR.h> //Click here to get the library: http://librarymanager/All#LIS3DHTR
+// #include <LIS3DHTR.h> //Click here to get the library: http://librarymanager/All#LIS3DHTR
+#include <SparkFun_ADXL345.h>         // SparkFun ADXL345 Library
 #include <Wire.h>
 
 /** Struct to link sensor axis name to sensor value function */
 typedef struct{
     const char *name;
-    float *value;
+    int *value;
     uint8_t (*poll_sensor)(void);
     bool (*init_sensor)(void);
     int8_t status;  // -1 not used 0 used(unitialized) 1 used(initalized) 2 data sampled
@@ -43,32 +44,32 @@ typedef struct{
                                         // but this example use Arudino library which set range to +-4g.
                                         // If you are using an older model, ignore this value and use 4.0f instead
 /** Number sensor axes used */
-#define N_SENSORS     7
+#define N_SENSORS     3
 
 /* Forward declarations ------------------------------------------------------- */
 float ei_get_sign(float number);
 static bool ei_connect_fusion_list(const char *input_list);
 
 bool init_IMU(void);
-bool init_ADC(void);
+// bool init_ADC(void);
 uint8_t poll_IMU(void);
-uint8_t poll_ADC(void);
+// uint8_t poll_ADC(void);
 
 /* Private variables ------------------------------------------------------- */
 static const bool debug_nn = false; // Set this to true to see e.g. features generated from the raw signal
-static float data[N_SENSORS];
+static int data[N_SENSORS];
 static int8_t fusion_sensors[N_SENSORS];
 static int fusion_ix = 0;
 
-LIS3DHTR<TwoWire> lis;
-
+// LIS3DHTR<TwoWire> lis;
+ADXL345 adxl = ADXL345();
 /** Used sensors value function connected to label name */
 eiSensors sensors[] =
 {
     "accX", &data[0], &poll_IMU, &init_IMU, -1,
     "accY", &data[1], &poll_IMU, &init_IMU, -1,
     "accZ", &data[2], &poll_IMU, &init_IMU, -1,
-    "adc", &data[6], &poll_ADC, &init_ADC, -1,
+    // "adc", &data[6], &poll_ADC, &init_ADC, -1,
 };
 
 /**
@@ -254,34 +255,29 @@ float ei_get_sign(float number) {
 }
 
 bool init_IMU(void) {
-  static bool init_status = false;
-  if (!init_status) {
-    lis.begin(Wire, LIS3DHTR_DEFAULT_ADDRESS);
-    init_status = lis.isConnection();
+//   static bool init_status = false;
+//   if (!init_status) {
+//     lis.begin(Wire, LIS3DHTR_DEFAULT_ADDRESS);
+//     init_status = lis.isConnection();
 
-    if(init_status == false) {
-        ei_printf("Failed to connect to Inertial sensor!\n");
-        return false;
-    }
+//     if(init_status == false) {
+//         ei_printf("Failed to connect to Inertial sensor!\n");
+//         return false;
+//     }
 
-    ei_sleep(100);
-    lis.setFullScaleRange(LIS3DHTR_RANGE_2G);
-    lis.setOutputDataRate(LIS3DHTR_DATARATE_100HZ);
-  }
-  return init_status;
-}
+//     ei_sleep(100);
+//     lis.setFullScaleRange(LIS3DHTR_RANGE_2G);
+//     lis.setOutputDataRate(LIS3DHTR_DATARATE_100HZ);
+//   }
+//   return init_status;
+adxl.powerOn(); 
+adxl.setRangeSetting(MAX_ACCEPTED_RANGE);
 
-bool init_ADC(void) {
-  static bool init_status = false;
-  if (!init_status) {
-    init_status = true;
-  }
-  return init_status;
 }
 
 uint8_t poll_IMU(void) {
 
-    lis.getAcceleration(&data[0], &data[1], &data[2]);
+    adxl.readAccel(&data[0], &data[1], &data[2]);
 
     for (int i = 0; i < 3; i++) {
         if (fabs(data[i]) > MAX_ACCEPTED_RANGE) {
@@ -296,8 +292,8 @@ uint8_t poll_IMU(void) {
     return 0;
 }
 
-uint8_t poll_ADC(void) {
-    // change to another pin if necessary
-    data[6] = analogRead(A0);
-    return 0;
-}
+// uint8_t poll_ADC(void) {
+//     // change to another pin if necessary
+//     data[6] = analogRead(A0);
+//     return 0;
+// }
